@@ -13,11 +13,17 @@
 - Gotcha: `pkill -f package-validate` from a shell also kills the shell itself (its own command line matches). Use the task id or a pid instead.
 - The first validate run stalled after 6 screenshots while the cards were still floor cards; once authored previews existed it ran clean. If it hangs again, load each `ds-bundle/components/*/*/*.html` in playwright one at a time with a 20s timeout to find the culprit.
 
+- Microblocks (`Strip`, `Corner`, added 2026-09-30): format and edge numbering live in `src/core/microblocks.js`, derived from Forge Multipart's EdgeMicroClass/CornerMicroClass and CodeChickenCore's AxisCycle (decompiled from the GTNH dev jars in `~/.gradle/caches`). `test/fixtures/strips-sample.schematic` is a strip outline saved in game by Schematica, and `npm test` rebuilds it part for part. In game, the hologram shows microblocks, but the printer and Schematica's material list skip them (confirmed by the user).
+- Microblock material names: only `ExtraUtilities:greenscreen` is confirmed (Extra Utilities registers unlocalized name + `_meta`). Every other block uses Forge Multipart's default (registry name + `_meta`), which is unchecked per mod. Add confirmed overrides to `MATERIAL_BASE` in `src/core/microblocks.js`.
+- Catalog tints: `scripts/build-catalog.mjs` applies the dumped colour multiplier to every block that has a non-white one (52 blocks: coloured Lapis Caelestis, Botania unstable blocks, modded grasses...). Before this, only leaves and grass were tinted, so every Lapis Caelestis colour rendered white.
+
 ## Known render warns
 
 - `[CSS_RUNTIME]`: expected. The library styles itself inline, and there is no stylesheet, tokens or fonts (system UI font stack).
 
 ## Re-sync risks
+
+- `dtsPropsFor.Strip` / `.Corner` spell out the `Edge` / `CornerName` unions by hand; keep them in step with `src/components.tsx`.
 
 - `dtsPropsFor` bodies are hand copies of the TS interfaces and go stale silently when props change.
 - `.design-sync/docs/*.md` duplicate parts of `library/README.md` (roof recipe, palette refs).

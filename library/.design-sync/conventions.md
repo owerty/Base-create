@@ -4,11 +4,12 @@ This library designs **Minecraft buildings for GT New Horizons 2.9** and exports
 
 ### The one rule: placement components go inside `<Structure>`
 
-`Block`, `Fill`, `Air`, `Hollow`, `Stairs`, `Slab`, `Pillar`, `Door` and `Torch` render nothing themselves. They record blocks into the nearest `<Structure>` and **throw ("Block components must be inside a <Structure>") anywhere else**. `Structure` needs `name` and `size={[width, height, length]}`.
+`Block`, `Fill`, `Air`, `Hollow`, `Stairs`, `Slab`, `Pillar`, `Door`, `Torch`, `Strip` and `Corner` render nothing themselves. They record blocks into the nearest `<Structure>` and **throw ("Block components must be inside a <Structure>") anywhere else**. `Structure` needs `name` and `size={[width, height, length]}`.
 
 - Coordinates are `[x, y, z]`, 0-based, inside `size`: x west→east, y up, z north→south; `y = 0` is the foundation layer.
 - Children apply **in order; later ones overwrite earlier ones**. Build big shapes first (foundation `Fill`, walls `Hollow ... noFloor noCeiling`), then openings (`Air`), windows, doors, trim, roof.
 - `block` is `"registry:name@meta"` (e.g. `"minecraft:stonebrick@0"`, `"chisel:marble@1"`). Meta is the item variant only; never add direction bits. Use `Stairs` (`facing`, `upsideDown`), `Slab` (`top`), `Pillar` (`axis`), `Door` (`facing`, `hingeRight`) and `Torch` (`on`) for shaped blocks; panes, fences and walls go in `Block`/`Fill` and connect on their own.
+- Trim with microblocks: `<Strip edge="bottom-north">` / `<Corner corner="bottom-north-west">` put thin Forge Multipart parts on one edge or corner of a block space. Several can share a space, so place them in the air beside the glass or wall they outline. The player places these by hand in game (the Schematica printer skips them); see `components/placement/Strip/Strip.prompt.md`.
 - Unknown references show as a magenta cube plus a warning box. Look up real references with the `<Palette>` widget, or `window.GtnhBlueprint.search(...)` / `lookup(ref)` / `BLOCKS` (6,360 variants).
 - Size the view with `viewHeight` (default 520 px). Use `hideMaterials` for compact layouts. Each `Structure` owns a WebGL canvas, so keep a page to a handful.
 

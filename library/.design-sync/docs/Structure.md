@@ -7,6 +7,7 @@ Root of every build: a 3D view with a layer slider, the material list, and Expor
 - Children run in order and **later ones overwrite earlier ones**: big shapes first (foundation, walls), then openings (`Air`), windows, doors, trim, roof.
 - Unknown block references render as a magenta cube and are listed in a yellow warning box.
 - `viewHeight` sets the 3D view height in px (default 520); `hideMaterials` hides the material list.
+- The footprint grid and bounding box are hidden by default; viewers toggle them with the **Grid** checkbox, and `showGrid` starts with them on.
 
 ```tsx
 <Structure name="Stone hut" size={[7, 6, 7]}>
