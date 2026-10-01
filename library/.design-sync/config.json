@@ -1,0 +1,59 @@
+{
+  "projectId": "e807fece-b432-41ef-afe5-166353596d47",
+  "shape": "package",
+  "pkg": "gtnh-blueprint",
+  "globalName": "GtnhBlueprint",
+  "buildCmd": "npm run build",
+  "overrides": {
+    "Structure": {
+      "cardMode": "column"
+    },
+    "Block": {
+      "cardMode": "column"
+    },
+    "Fill": {
+      "cardMode": "column"
+    },
+    "Air": {
+      "cardMode": "column"
+    },
+    "Hollow": {
+      "cardMode": "column"
+    },
+    "Stairs": {
+      "cardMode": "column"
+    },
+    "Slab": {
+      "cardMode": "column"
+    },
+    "Pillar": {
+      "cardMode": "column"
+    },
+    "Door": {
+      "cardMode": "column"
+    },
+    "Torch": {
+      "cardMode": "column"
+    },
+    "Palette": {
+      "cardMode": "column"
+    },
+    "BlockIcon": {
+      "cardMode": "column"
+    }
+  },
+  "docsDir": ".design-sync/docs",
+  "dtsPropsFor": {
+    "Structure": "\n  /** Shown in the header and used as the .schematic file name. */\n  name: string;\n  /** [width (x, west→east), height (y, up), length (z, north→south)]. */\n  size: [number, number, number];\n  /** Height of the 3D view in px. Default 520. */\n  viewHeight?: number;\n  /** Hide the material list. */\n  hideMaterials?: boolean;\n  children?: React.ReactNode;\n",
+    "Block": "\n  /** \"registry:name@meta\", e.g. \"minecraft:stonebrick@0\". */\n  block: string;\n  /** [x, y, z] inside the Structure size. */\n  at: [number, number, number];\n  /** Raw world metadata, overriding the shape direction rules. Rarely needed. */\n  meta?: number;\n",
+    "Fill": "\n  block: string;\n  /** One corner, inclusive. */\n  from: [number, number, number];\n  /** Opposite corner, inclusive. */\n  to: [number, number, number];\n",
+    "Air": "\n  /** One corner (or the single block when to is omitted). */\n  from: [number, number, number];\n  /** Opposite corner, inclusive. */\n  to?: [number, number, number];\n",
+    "Hollow": "\n  block: string;\n  /** One corner, inclusive. */\n  from: [number, number, number];\n  /** Opposite corner, inclusive. */\n  to: [number, number, number];\n  /** Leave the floor layer out. */\n  noFloor?: boolean;\n  /** Leave the ceiling layer out. */\n  noCeiling?: boolean;\n",
+    "Stairs": "\n  block: string;\n  at: [number, number, number];\n  /** End of a straight run (inclusive), all with the same facing. */\n  to?: [number, number, number];\n  /** The side the tall back of the step is on — the direction you walk to go up. */\n  facing: \"north\" | \"south\" | \"east\" | \"west\";\n  /** Hang the step from the ceiling (tall part at the bottom). */\n  upsideDown?: boolean;\n",
+    "Slab": "\n  block: string;\n  at: [number, number, number];\n  /** Opposite corner of a box of slabs, inclusive. */\n  to?: [number, number, number];\n  /** Upper half of the block space instead of the lower half. */\n  top?: boolean;\n",
+    "Pillar": "\n  block: string;\n  at: [number, number, number];\n  /** End of a straight run, inclusive. */\n  to?: [number, number, number];\n  /** Direction the log/pillar runs. Default \"y\" (upright). */\n  axis?: \"x\" | \"y\" | \"z\";\n",
+    "Door": "\n  block: string;\n  /** Position of the lower half;\n  the upper half goes directly above. */\n  at: [number, number, number];\n  /** Direction you face walking in through the door. */\n  facing: \"north\" | \"south\" | \"east\" | \"west\";\n  hingeRight?: boolean;\n",
+    "Torch": "\n  /** Defaults to \"minecraft:torch@0\". */\n  block?: string;\n  at: [number, number, number];\n  /** Where the supporting block is: \"floor\" or the wall direction from the torch. Default \"floor\". */\n  on?: \"floor\" | \"north\" | \"south\" | \"east\" | \"west\";\n"
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
