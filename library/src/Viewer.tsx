@@ -51,10 +51,12 @@ export interface ViewerProps {
   maxY: number;
   height: number;
   background?: string;
+  /** Draw the footprint grid and the bounding box. */
+  showGrid?: boolean;
 }
 
 /** Orbitable 3D view of a grid, rendered with the pack's own textures. */
-export function Viewer({ grid, maxY, height, background = "#1d2026" }: ViewerProps) {
+export function Viewer({ grid, maxY, height, background = "#1d2026", showGrid = false }: ViewerProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<{ group: THREE.Group; invalidate(): void } | null>(null);
 
@@ -189,19 +191,21 @@ export function Viewer({ grid, maxY, height, background = "#1d2026" }: ViewerPro
     glass.renderOrder = 1;
     v.group.add(glass);
     v.group.add(new THREE.Mesh(missing, new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: false })));
-    // Footprint grid and bounding box.
-    const [w, h, l] = grid.size;
-    const floor = new THREE.GridHelper(Math.max(w, l), Math.max(w, l), 0x5a6270, 0x353a44);
-    floor.position.set(w / 2, 0.001, l / 2);
-    floor.scale.set(w / Math.max(w, l), 1, l / Math.max(w, l));
-    v.group.add(floor);
-    const bounds = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, l)),
-      new THREE.LineBasicMaterial({ color: 0x5a6270, transparent: true, opacity: 0.5 }));
-    bounds.position.set(w / 2, h / 2, l / 2);
-    v.group.add(bounds);
+    // Footprint grid and bounding box, when asked for.
+    if (showGrid) {
+      const [w, h, l] = grid.size;
+      const floor = new THREE.GridHelper(Math.max(w, l), Math.max(w, l), 0x5a6270, 0x353a44);
+      floor.position.set(w / 2, 0.001, l / 2);
+      floor.scale.set(w / Math.max(w, l), 1, l / Math.max(w, l));
+      v.group.add(floor);
+      const bounds = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, l)),
+        new THREE.LineBasicMaterial({ color: 0x5a6270, transparent: true, opacity: 0.5 }));
+      bounds.position.set(w / 2, h / 2, l / 2);
+      v.group.add(bounds);
+    }
     v.invalidate();
-  }, [grid, maxY]);
+  }, [grid, maxY, showGrid]);
 
   return <div ref={host} style={{ width: "100%", height, overflow: "hidden", borderRadius: 6 }} />;
 }
