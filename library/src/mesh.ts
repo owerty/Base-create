@@ -29,10 +29,12 @@ class Buffers {
   }
 }
 
+// A face's texture rectangle in the atlas, pulled in by half a texel on every side: sampling right at a tile's edge
+// can pick up the neighbouring tile and draws a coloured seam along every block edge.
 function tileUV(tile: number) {
   const W = ATLAS.cols * ATLAS.tile, H = ATLAS.rows * ATLAS.tile;
-  const u0 = ((tile % ATLAS.cols) * ATLAS.tile) / W, v0 = (Math.floor(tile / ATLAS.cols) * ATLAS.tile) / H;
-  return { u0, v0, du: ATLAS.tile / W, dv: ATLAS.tile / H };
+  const u0 = ((tile % ATLAS.cols) * ATLAS.tile + 0.5) / W, v0 = (Math.floor(tile / ATLAS.cols) * ATLAS.tile + 0.5) / H;
+  return { u0, v0, du: (ATLAS.tile - 1) / W, dv: (ATLAS.tile - 1) / H };
 }
 
 function tintRGB(hex?: string): [number, number, number] {
