@@ -17,6 +17,7 @@ class Buffers {
   pos: number[] = [];
   uv: number[] = [];
   col: number[] = [];
+  rect: number[] = [];
   idx: number[] = [];
 
   geometry() {
@@ -24,17 +25,22 @@ class Buffers {
     g.setAttribute("position", new THREE.Float32BufferAttribute(this.pos, 3));
     g.setAttribute("uv", new THREE.Float32BufferAttribute(this.uv, 2));
     g.setAttribute("color", new THREE.Float32BufferAttribute(this.col, 3));
+    g.setAttribute("uvRect", new THREE.Float32BufferAttribute(this.rect, 4));
     g.setIndex(this.idx);
     return g;
   }
 }
 
-// A face's texture rectangle in the atlas, pulled in by half a texel on every side: sampling right at a tile's edge
-// can pick up the neighbouring tile and draws a coloured seam along every block edge.
+// A face's tile in the atlas, plus the rectangle the shader clamps its lookups to (half a texel inside the tile).
+// Without the clamp, sampling at a face's edge can pick up the neighbouring tile and draw a coloured seam along
+// block edges; antialiasing samples slightly outside the face, which at grazing angles reaches far past any margin.
 function tileUV(tile: number) {
   const W = ATLAS.cols * ATLAS.tile, H = ATLAS.rows * ATLAS.tile;
-  const u0 = ((tile % ATLAS.cols) * ATLAS.tile + 0.5) / W, v0 = (Math.floor(tile / ATLAS.cols) * ATLAS.tile + 0.5) / H;
-  return { u0, v0, du: (ATLAS.tile - 1) / W, dv: (ATLAS.tile - 1) / H };
+  const x = (tile % ATLAS.cols) * ATLAS.tile, y = Math.floor(tile / ATLAS.cols) * ATLAS.tile;
+  return {
+    u0: x / W, v0: y / H, du: ATLAS.tile / W, dv: ATLAS.tile / H,
+    rect: [(x + 0.5) / W, (y + 0.5) / H, (x + ATLAS.tile - 0.5) / W, (y + ATLAS.tile - 0.5) / H],
+  };
 }
 
 function tintRGB(hex?: string): [number, number, number] {
@@ -58,13 +64,14 @@ function face(buf: Buffers, origin: Vec3, b: Box, side: number, tile: number, ti
     case WEST: quad = [[x0, y1, z0], [x0, y0, z0], [x0, y0, z1], [x0, y1, z1]]; uv = [[z0, 1 - y1], [z0, 1 - y0], [z1, 1 - y0], [z1, 1 - y1]]; break;
     default: quad = [[x1, y1, z1], [x1, y0, z1], [x1, y0, z0], [x1, y1, z0]]; uv = [[1 - z1, 1 - y1], [1 - z1, 1 - y0], [1 - z0, 1 - y0], [1 - z0, 1 - y1]]; break;
   }
-  const { u0, v0, du, dv } = tileUV(tile);
+  const { u0, v0, du, dv, rect } = tileUV(tile);
   const start = buf.pos.length / 3;
   const s = SHADE[side];
   for (let i = 0; i < 4; i++) {
     buf.pos.push(ox + quad[i][0], oy + quad[i][1], oz + quad[i][2]);
     buf.uv.push(u0 + uv[i][0] * du, v0 + uv[i][1] * dv);
     buf.col.push(s * tint[0], s * tint[1], s * tint[2]);
+    buf.rect.push(...rect);
   }
   buf.idx.push(start, start + 1, start + 2, start, start + 2, start + 3);
 }

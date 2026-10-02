@@ -26,6 +26,22 @@ function atlas(onReady: () => void) {
   return atlasTexture;
 }
 
+// Block materials clamp every texture lookup to the face's own atlas tile (the mesh's uvRect attribute), so
+// edges never pick up a neighbouring tile.
+function atlasMaterial(params: THREE.MeshBasicMaterialParameters) {
+  const m = new THREE.MeshBasicMaterial(params);
+  m.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec4 uvRect;\nvarying vec4 vUvRect;")
+      .replace("#include <uv_vertex>", "#include <uv_vertex>\nvUvRect = uvRect;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec4 vUvRect;")
+      .replace("#include <map_fragment>", THREE.ShaderChunk.map_fragment
+        .replace("texture2D( map, vMapUv )", "texture2D( map, clamp( vMapUv, vUvRect.xy, vUvRect.zw ) )"));
+  };
+  return m;
+}
+
 // Browsers keep only ~16 WebGL contexts per page and drop the oldest beyond
 // that, so a viewer holds a context only while it is on screen, and at most
 // MAX_LIVE viewers hold one at a time. A viewer without a context shows a
@@ -186,8 +202,8 @@ export function Viewer({ grid, maxY, height, background = "#1d2026", showGrid = 
     }
     const { solid, blend, missing } = buildMeshes(grid, maxY);
     const map = atlas(v.invalidate);
-    v.group.add(new THREE.Mesh(solid, new THREE.MeshBasicMaterial({ map, vertexColors: true, alphaTest: 0.5 })));
-    const glass = new THREE.Mesh(blend, new THREE.MeshBasicMaterial({ map, vertexColors: true, transparent: true, depthWrite: false }));
+    v.group.add(new THREE.Mesh(solid, atlasMaterial({ map, vertexColors: true, alphaTest: 0.5 })));
+    const glass = new THREE.Mesh(blend, atlasMaterial({ map, vertexColors: true, transparent: true, depthWrite: false }));
     glass.renderOrder = 1;
     v.group.add(glass);
     v.group.add(new THREE.Mesh(missing, new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: false })));
