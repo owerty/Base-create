@@ -6,7 +6,7 @@ Forge Multipart strips along one edge of each block space, inside a `<Structure>
 - `edge` names the edge by the two faces that meet there. Horizontal: `"bottom-north"`, `"bottom-south"`, `"bottom-west"`, `"bottom-east"`, `"top-north"`, `"top-south"`, `"top-west"`, `"top-east"`. Vertical: `"north-west"`, `"north-east"`, `"south-west"`, `"south-east"`.
 - `at`/`to` give a run (inclusive). Every block space in it gets the same edge, so a run along x uses a horizontal edge like `"bottom-north"`.
 - `size`: 1 strip (default), 2 post, 4 pillar, in eighths of a block.
-- In game, Schematica shows strips in the hologram, but its printer and material list skip them. The Structure's own material list counts them, and the player places them by hand.
+- In game, the player's Schematica build (microblock printer) lists strips in its material list and prints them; stock Schematica only shows them in the hologram. The Structure's own material list counts them too.
 
 Window outline: glass wall at `z = 0`, room to the south, strips on the room side (`z = 1`):
 

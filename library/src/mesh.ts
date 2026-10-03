@@ -5,6 +5,8 @@ import { ATLAS } from "./catalog";
 import type { Cell, Grid, Vec3, Facing } from "./model";
 // @ts-ignore - plain JS shared with the Node tools
 import { edgeBox, cornerBox } from "./core/microblocks.js";
+// @ts-ignore - plain JS shared with the Node tools
+import { shapeTriangles } from "./core/architecture.js";
 
 // Face order matches the catalog: down, up, north, south, west, east.
 const DOWN = 0, UP = 1, NORTH = 2, SOUTH = 3, WEST = 4, EAST = 5;
@@ -86,11 +88,11 @@ function box(buf: Buffers, origin: Vec3, b: Box, tiles: number[], tint: [number,
 const P = 1 / 16;
 
 function isSolidCube(c?: Cell) {
-  return !!c?.block && c.block.shape === "cube" && c.block.alpha === "opaque";
+  return !!c?.block && !c.shape && c.block.shape === "cube" && c.block.alpha === "opaque";
 }
 
 function connects(c: Cell | undefined, to: "pane" | "fence" | "wall") {
-  if (!c?.block) return false;
+  if (!c?.block || c.shape) return false;
   const s = c.block.shape;
   if (s === "cube") return to === "pane" || c.block.alpha === "opaque";
   if (to === "pane") return s === "pane";
@@ -153,6 +155,37 @@ function postAndArms(buf: Buffers, o: Vec3, grid: Grid, at: Vec3, tiles: number[
 
 const MISSING_TILE = -1;
 
+// Shading for a sloped face, from its normal: Minecraft's per-axis factors blended by the normal's direction.
+function shadeFor([x, y, z]: number[]) {
+  const ax = x * x, ay = y * y, az = z * z;
+  return ax * 0.6 + az * 0.8 + ay * (y > 0 ? 1 : 0.5);
+}
+
+interface ShapeTri { p: number[][]; uv: number[][]; tex: number; n: number[] }
+
+// An ArchitectureCraft shape: triangles from core/architecture.js, textured with the material's north side as the mod does.
+function shapeMesh(bufs: { solid: Buffers; blend: Buffers }, grid: Grid, at: Vec3, c: Cell) {
+  const s = c.shape!;
+  const teOf = (cell?: Cell) => cell?.shape
+    ? { shape: cell.shape.id, side: cell.shape.side, turn: cell.shape.turn, offsetX: cell.shape.offsetX, secondary: !!cell.shape.secondaryKey, disconnected: cell.shape.disconnected }
+    : isSolidCube(cell) ? { solid: true } : null;
+  const tris: ShapeTri[] = shapeTriangles(teOf(c), (dx: number, dy: number, dz: number) => teOf(grid.get([at[0] + dx, at[1] + dy, at[2] + dz])));
+  for (const t of tris) {
+    const mat = t.tex >= 2 && s.secondary ? s.secondary : c.block!;
+    const buf = mat.alpha === "blend" ? bufs.blend : bufs.solid;
+    const { u0, v0, du, dv, rect } = tileUV(mat.faces[NORTH]);
+    const tint = tintRGB(mat.tint), sh = shadeFor(t.n);
+    const start = buf.pos.length / 3;
+    for (let i = 0; i < 3; i++) {
+      buf.pos.push(at[0] + t.p[i][0], at[1] + t.p[i][1], at[2] + t.p[i][2]);
+      buf.uv.push(u0 + t.uv[i][0] * du, v0 + t.uv[i][1] * dv);
+      buf.col.push(sh * tint[0], sh * tint[1], sh * tint[2]);
+      buf.rect.push(...rect);
+    }
+    buf.idx.push(start, start + 1, start + 2);
+  }
+}
+
 /** Geometry for every block at or below `maxY`, split by render pass. */
 export function buildMeshes(grid: Grid, maxY = Infinity) {
   const solid = new Buffers(), blend = new Buffers(), missing = new Buffers();
@@ -163,6 +196,7 @@ export function buildMeshes(grid: Grid, maxY = Infinity) {
       box(missing, o, [0, 0, 0, 1, 1, 1], [0, 0, 0, 0, 0, 0].map(() => MISSING_TILE), [1, 0, 1]);
       continue;
     }
+    if (c.shape) { shapeMesh({ solid, blend }, grid, at, c); continue; }
     const b = c.block;
     const buf = b.alpha === "blend" ? blend : solid;
     const tint = tintRGB(b.tint);

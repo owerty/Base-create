@@ -29,3 +29,5 @@
 - `.design-sync/docs/*.md` duplicate parts of `library/README.md` (roof recipe, palette refs).
 - Previews use real catalog references (`minecraft:*`, `chisel:*`). A catalog regeneration (`npm run catalog`) that drops a block turns that cell magenta. `Structure/UnknownBlockWarning` is magenta on purpose (`stonebrik` typo).
 - The bundle is ~6.6 MB because the texture atlas and catalog are inlined as data.
+- `dtsPropsFor.ArchShape` spells out the 105-entry `ShapeKey` union by hand (generated from `src/components.tsx`); regenerate it when `scripts/build-architecture.mjs` changes the shape table.
+- `src/generated/architecture.json` comes from `node scripts/build-architecture.mjs` (reads ~/fun/ArchitectureCraft at tag 1.12.17, or the dev jar in the Gradle cache).

@@ -20,6 +20,7 @@ export class Structure {
     this.names = ["minecraft:air"]; // local id -> registry name
     this.idOf = new Map([["minecraft:air", 0]]);
     this.parts = new Map(); // index -> Forge Multipart parts (see microblocks.js)
+    this.tiles = new Map(); // index -> other tile entity NBT (tagged values, without x/y/z), e.g. ArchitectureCraft shapes
   }
 
   index(x, y, z) {
@@ -47,6 +48,17 @@ export class Structure {
     this.ids[i] = this.localId(name);
     this.meta[i] = meta;
     this.parts.delete(i);
+    this.tiles.delete(i);
+  }
+
+  // A block with its tile entity; `tile` is an NBT compound with an `id` (x/y/z are added on save).
+  setTile(x, y, z, block, tile) {
+    this.set(x, y, z, block);
+    this.tiles.set(this.index(x, y, z), { ...tile });
+  }
+
+  getTile(x, y, z) {
+    return this.tiles.get(this.index(x, y, z));
   }
 
   // Microblock parts ({ id, material, shape }) sharing one block space.
@@ -96,12 +108,18 @@ export class Structure {
       AddBlocks: byteArray(new Uint8Array(this.ids.length)),
       SchematicaMapping: mapping,
       Entities: list(TAG.Compound, []),
-      TileEntities: list(TAG.Compound, [...this.parts].map(([i, parts]) => ({
-        id: "savedMultipart",
-        x: int(i % this.width), y: int(Math.floor(i / (this.width * this.length))), z: int(Math.floor(i / this.width) % this.length),
-        parts: list(TAG.Compound, parts.map(p => ({ id: p.id, material: p.material, shape: byte(p.shape) }))),
-      }))),
+      TileEntities: list(TAG.Compound, [
+        ...[...this.parts].map(([i, parts]) => ({
+          id: "savedMultipart", ...this.xyz(i),
+          parts: list(TAG.Compound, parts.map(p => ({ id: p.id, material: p.material, shape: byte(p.shape) }))),
+        })),
+        ...[...this.tiles].map(([i, tile]) => ({ ...tile, ...this.xyz(i) })),
+      ]),
     });
+  }
+
+  xyz(i) {
+    return { x: int(i % this.width), y: int(Math.floor(i / (this.width * this.length))), z: int(Math.floor(i / this.width) % this.length) };
   }
 
   // Parse uncompressed NBT written by toNBT() or by Schematica itself.
@@ -122,7 +140,11 @@ export class Structure {
       st.set(x, y, z, { name, meta: data[i] & 0xf });
     }
     for (const te of s.TileEntities?.value ?? []) {
-      if (te.id !== "savedMultipart") continue;
+      if (te.id !== "savedMultipart") {
+        const { x, y, z, ...tile } = te;
+        if (x && y && z && st.ids[st.index(x.value, y.value, z.value)] !== 0) st.tiles.set(st.index(x.value, y.value, z.value), tile);
+        continue;
+      }
       const parts = te.parts.value.map(p => ({ id: p.id, material: p.material, shape: p.shape.value & 0xff }));
       st.parts.set(st.index(te.x.value, te.y.value, te.z.value), parts);
     }

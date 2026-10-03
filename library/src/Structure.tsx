@@ -1,5 +1,5 @@
 import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { buildGrid, cellsFor, partFor, type Grid, type Op, type Part, type PlaceOptions, type Vec3 } from "./model";
+import { buildGrid, cellsFor, partFor, shapeCellFor, type ShapeOptions, type Grid, type Op, type Part, type PlaceOptions, type Vec3 } from "./model";
 import { Viewer } from "./Viewer";
 import { ATLAS, lookup } from "./catalog";
 
@@ -21,6 +21,22 @@ export function usePlace() {
   };
 }
 
+/** Used by <Shape>: records ArchitectureCraft shape blocks during render. */
+export function usePlaceShape() {
+  const c = useContext(StructureContext);
+  if (!c) throw new Error("Block components must be inside a <Structure>");
+  return {
+    place(at: Vec3, ref: string, opts: ShapeOptions) {
+      const { cell, problem } = shapeCellFor(ref, opts);
+      if (problem) c.problems.push(problem);
+      c.ops.push({ at, cell });
+    },
+    problem(message: string) {
+      c.problems.push(message);
+    },
+  };
+}
+
 /** Used by the microblock components: records parts during render. */
 export function usePlacePart() {
   const c = useContext(StructureContext);
@@ -39,7 +55,7 @@ export function usePlacePart() {
 
 const opSig = (o: Op) => "part" in o
   ? `${o.at}:p${o.part.kind}${o.part.slot}/${o.part.size}:${o.part.key}`
-  : `${o.at}:${o.cell.key}:${o.cell.meta}:${o.cell.doorHalf ?? ""}:${o.cell.on ?? ""}`;
+  : `${o.at}:${o.cell.key}:${o.cell.meta}:${o.cell.doorHalf ?? ""}:${o.cell.on ?? ""}${o.cell.shape ? ":" + JSON.stringify({ ...o.cell.shape, secondary: undefined }) : ""}`;
 
 export interface StructureProps {
   /** Shown in the header and used as the .schematic file name. */
@@ -190,7 +206,7 @@ export function Structure({ name, size, viewHeight = 520, hideMaterials, showGri
             <div key={m.key} style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <BlockIcon block={m.icon} />
               <span style={{ minWidth: 34, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{m.count}</span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.microblock ? `${m.key} (place by hand: the Schematica printer skips microblocks)` : m.key}>{m.display}</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.shape ? `${m.key} (${m.sawbench ?? "cut at the ArchitectureCraft sawbench"})` : m.microblock ? `${m.key} (Forge Multipart microblock)` : m.key}>{m.display}</span>
             </div>
           ))}
         </div>

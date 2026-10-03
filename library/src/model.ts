@@ -6,6 +6,10 @@ import { AIR, blockKey, lookup, type CatalogBlock } from "./catalog";
 import { Structure as SchematicWriter } from "./core/schematic.js";
 // @ts-ignore - plain JS shared with the Node tools
 import { part as savedPart } from "./core/microblocks.js";
+// @ts-ignore - plain JS shared with the Node tools
+import { shapeTile, SHAPE_BLOCK, SHAPE_BLOCK_GLOW } from "./core/architecture-nbt.js";
+// @ts-ignore - plain JS shared with the Node tools
+import { shapeById, shapeByKey, orientShape } from "./core/architecture.js";
 
 export type Vec3 = [number, number, number];
 export type Facing = "north" | "south" | "east" | "west";
@@ -23,6 +27,25 @@ export interface Cell {
   axis?: "x" | "y" | "z";
   doorHalf?: "lower" | "upper";
   on?: "floor" | Facing;
+  /** An ArchitectureCraft shape; `key`/`block` are then its material. */
+  shape?: ShapeState;
+}
+
+/** An ArchitectureCraft shape block's tile entity state (core/architecture-nbt.js). */
+export interface ShapeState {
+  /** Shape id (core/architecture.js SHAPES). */
+  id: number;
+  side: number;
+  turn: number;
+  /** Shift along the shape's own x axis, in blocks (banisters: ±0.25 and similar). */
+  offsetX: number;
+  /** Second material: the glass of a window, cladding on a model. */
+  secondaryKey?: string;
+  secondary?: CatalogBlock;
+  /** On ArchitectureCraft:shapeSE (glow page shapes, or glow brush). */
+  glow?: boolean;
+  /** Connections turned off with the chisel, bit per EnumFacing ordinal (down, up, north, south, west, east). */
+  disconnected: number;
 }
 
 /** A Forge Multipart microblock: several can share one block space. */
@@ -111,6 +134,72 @@ export function cellsFor(ref: string, opts: PlaceOptions = {}): { cells: Cell[];
   }
 }
 
+export interface Material {
+  key: string;
+  icon: string;
+  display: string;
+  count: number;
+  microblock?: boolean;
+  /** An ArchitectureCraft shape (cut at the sawbench). */
+  shape?: boolean;
+  /** For shapes: what to put in the sawbench, e.g. "sawbench: 3 × Oak Wood Planks → 6". */
+  sawbench?: string;
+}
+
+const nameMeta = (key: string, block?: CatalogBlock) => {
+  const at = key.lastIndexOf("@");
+  return { name: block?.name ?? key.slice(0, at), meta: block?.meta ?? Number(key.slice(at + 1)) };
+};
+
+export interface ShapeOptions {
+  /** Shape key from core/architecture.js, e.g. "roofTile". */
+  shape: string;
+  facing?: Facing;
+  upsideDown?: boolean;
+  /** Raw orientation, overriding facing/upsideDown. */
+  side?: number;
+  turn?: number;
+  /** Banister-style shift along the shape's own x axis, in blocks. */
+  offsetX?: number;
+  /** Second material (window glass, cladding). */
+  secondary?: string;
+  /** On the glowing block (ArchitectureCraft:shapeSE). */
+  glow?: boolean;
+  disconnected?: number;
+}
+
+// Blocks the sawbench takes besides normal opaque cubes (TileSawbench.isAcceptableMaterial).
+const SAWBENCH_EXTRA = new Set(["minecraft:glass", "minecraft:stained_glass"]);
+
+/** One ArchitectureCraft shape block of material `ref`. */
+export function shapeCellFor(ref: string, opts: ShapeOptions): { cell: Cell; problem?: string } {
+  const key = blockKey(ref);
+  const block = lookup(key);
+  const sh = shapeByKey(opts.shape);
+  const problems: string[] = [];
+  if (!sh) problems.push(`unknown ArchitectureCraft shape "${opts.shape}"`);
+  else if (sh.placeable === false) problems.push(`${sh.title} is an item, not a block (apply cladding with secondary)`);
+  if (!block) problems.push(`unknown block "${ref}"`);
+  else if (!(block.shape === "slab" || SAWBENCH_EXTRA.has(block.name) || (block.shape === "cube" && block.alpha === "opaque")))
+    problems.push(`${ref} is not a sawbench material (normal opaque blocks, glass and slabs)`);
+  const { side, turn } = opts.side !== undefined || opts.turn !== undefined
+    ? { side: opts.side ?? 0, turn: opts.turn ?? 0 }
+    : sh ? orientShape(sh, opts.facing ?? "north", !!opts.upsideDown) : { side: 0, turn: 0 };
+  let secondaryKey: string | undefined, secondary: CatalogBlock | undefined;
+  if (opts.secondary) {
+    secondaryKey = blockKey(opts.secondary);
+    secondary = lookup(secondaryKey);
+    if (!secondary) problems.push(`unknown block "${opts.secondary}"`);
+    if (sh && !sh.secondary) problems.push(`${sh.title} takes no second material`);
+  }
+  const cell: Cell = {
+    key, block, meta: 0,
+    shape: { id: sh?.id ?? 0, side, turn, offsetX: opts.offsetX ?? 0, secondaryKey, secondary, disconnected: opts.disconnected ?? 0,
+      glow: !!(opts.glow || sh?.glow) },
+  };
+  return { cell, problem: problems.length ? problems.join("; ") : undefined };
+}
+
 export class Grid {
   readonly size: Vec3;
   private cells = new Map<number, Cell>();
@@ -189,13 +278,29 @@ export class Grid {
 
   /**
    * Item counts for the build, doors counted once. Microblocks are listed
-   * per material and shape ("White Lapis Caelestis strip"); `icon` is the
-   * catalog key to draw a swatch from.
+   * per material and shape ("White Lapis Caelestis strip"), ArchitectureCraft
+   * shapes per material, shape and second material; `icon` is the catalog key
+   * to draw a swatch from.
    */
-  materials(): { key: string; icon: string; display: string; count: number; microblock?: boolean }[] {
-    const counts = new Map<string, { key: string; icon: string; display: string; count: number; microblock?: boolean }>();
+  materials(): Material[] {
+    const counts = new Map<string, Material>();
     for (const [, c] of this.entries()) {
       if (c.doorHalf === "upper") continue;
+      if (c.shape) {
+        const sh = shapeById(c.shape.id);
+        const glass = c.shape.secondaryKey ? ` + ${c.shape.secondary?.display ?? c.shape.secondaryKey}` : "";
+        const key = `${c.key} ${sh?.name ?? c.shape.id}${c.shape.secondaryKey ? " " + c.shape.secondaryKey : ""}`;
+        const e = counts.get(key) ?? { key, icon: c.key, display: `${c.block?.display ?? c.key} ${sh?.title ?? "shape " + c.shape.id}${glass}`, count: 0, shape: true };
+        e.count++;
+        if (sh) {
+          // The sawbench cuts materialUsed blocks (twice that in slabs) into itemsProduced shapes.
+          const runs = Math.ceil(e.count / sh.itemsProduced);
+          const used = runs * sh.materialUsed * (c.block?.shape === "slab" ? 2 : 1);
+          e.sawbench = `sawbench: ${used} × ${c.block?.display ?? c.key} → ${runs * sh.itemsProduced}${glass ? `; then 1 ${glass.slice(3)} into each` : ""}`;
+        }
+        counts.set(key, e);
+        continue;
+      }
       const e = counts.get(c.key) ?? { key: c.key, icon: c.key, display: c.block?.display ?? c.key, count: 0 };
       e.count++;
       counts.set(c.key, e);
@@ -213,6 +318,7 @@ export class Grid {
   async toSchematic(): Promise<Uint8Array> {
     const w = new SchematicWriter(this.size[0], this.size[1], this.size[2]);
     for (const [[x, y, z], c] of this.entries()) {
+      if (c.shape) { w.setTile(x, y, z, { name: shapeBlockName(c.shape), meta: 0 }, shapeTileOf(c)); continue; }
       const name = c.block?.name ?? c.key.replace(/@\d+$/, "");
       w.set(x, y, z, { name, meta: c.meta });
     }
@@ -224,16 +330,38 @@ export class Grid {
 
   /**
    * Compact JSON blueprint: [x, y, z, registry name, meta] per block, and
-   * [x, y, z, [[part id, material, shape], ...]] per microblock space.
+   * [x, y, z, [[part id, material, shape], ...]] per microblock space, and
+   * [x, y, z, tile entity] per ArchitectureCraft shape (plain values).
    */
   toBlueprint(name: string) {
     const blocks: [number, number, number, string, number][] = [];
-    for (const [[x, y, z], c] of this.entries()) blocks.push([x, y, z, c.block?.name ?? c.key.replace(/@\d+$/, ""), c.meta]);
+    const shapes: [number, number, number, Record<string, unknown>][] = [];
+    for (const [[x, y, z], c] of this.entries()) {
+      if (c.shape) {
+        blocks.push([x, y, z, shapeBlockName(c.shape), 0]);
+        const t = shapeTileOf(c);
+        shapes.push([x, y, z, Object.fromEntries(Object.entries(t).map(([k, v]) => [k, typeof v === "object" && v ? (v as { value: unknown }).value : v]))]);
+        continue;
+      }
+      blocks.push([x, y, z, c.block?.name ?? c.key.replace(/@\d+$/, ""), c.meta]);
+    }
     const parts: [number, number, number, [string, string, number][]][] = [];
     for (const [[x, y, z], list] of this.partEntries())
       parts.push([x, y, z, list.map(savedPartOf).map((p: { id: string; material: string; shape: number }) => [p.id, p.material, p.shape])]);
-    return { format: "gtnh-blueprint/1", name, size: this.size, blocks, ...(parts.length ? { parts } : {}) };
+    return { format: "gtnh-blueprint/1", name, size: this.size, blocks, ...(parts.length ? { parts } : {}), ...(shapes.length ? { shapes } : {}) };
   }
+}
+
+function shapeBlockName(s: ShapeState) {
+  return s.glow || shapeById(s.id)?.glow ? SHAPE_BLOCK_GLOW : SHAPE_BLOCK;
+}
+
+function shapeTileOf(c: Cell) {
+  const s = c.shape!;
+  return shapeTile({
+    shape: s.id, side: s.side, turn: s.turn, offsetX: s.offsetX, disconnected: s.disconnected,
+    base: nameMeta(c.key, c.block), secondary: s.secondaryKey ? nameMeta(s.secondaryKey, s.secondary) : undefined,
+  });
 }
 
 function savedPartOf(p: Part) {

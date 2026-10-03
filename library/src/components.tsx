@@ -2,7 +2,7 @@
 // <Structure> and renders nothing itself. Later components overwrite earlier
 // ones, so a <Fill> followed by <Air> carves a hole, and a <Window> placed
 // after a wall replaces the wall blocks it covers.
-import { usePlace, usePlacePart } from "./Structure";
+import { usePlace, usePlacePart, usePlaceShape } from "./Structure";
 import type { Facing, Vec3 } from "./model";
 // @ts-ignore - plain JS shared with the Node tools
 import { edgeSlot, cornerSlot } from "./core/microblocks.js";
@@ -175,8 +175,8 @@ export interface StripProps {
 /**
  * Forge Multipart strips along a block edge, e.g. outlining the inside
  * edges of a glass wall. Several strips can share one block space; a strip
- * replaces a full block in its space. Schematica shows them in the hologram
- * but its printer skips them: place them by hand.
+ * replaces a full block in its space. The player's Schematica build prints
+ * them; stock Schematica only shows them in the hologram.
  */
 export function Strip({ block, at, to = at, edge, size = 1 }: StripProps) {
   const p = usePlacePart();
@@ -196,11 +196,163 @@ export interface CornerProps {
   size?: 1 | 2 | 4;
 }
 
-/** Forge Multipart corner pieces, e.g. to cap where strips meet. Hand-placed like strips. */
+/** Forge Multipart corner pieces (nook, corner, notch), e.g. to cap where strips meet. Printed like strips. */
 export function Corner({ block, at, to = at, corner, size = 1 }: CornerProps) {
   const p = usePlacePart();
   let slot: number;
   try { slot = cornerSlot(corner); } catch (e) { p.problem(`Corner: ${(e as Error).message}`); return null; }
   for (const q of range(at, to)) p.place(q, block, "corner", slot, size);
+  return null;
+}
+
+/** An ArchitectureCraft shape (core/architecture.js SHAPES), lowerCamel. */
+export type ShapeKey =
+  | "roofTile"
+  | "roofOuterCorner"
+  | "roofInnerCorner"
+  | "roofRidge"
+  | "roofSmartRidge"
+  | "roofValley"
+  | "roofSmartValley"
+  | "roofOverhang"
+  | "roofOverhangOuterCorner"
+  | "roofOverhangInnerCorner"
+  | "cylinder"
+  | "cylinderHalf"
+  | "cylinderQuarter"
+  | "cylinderLargeQuarter"
+  | "anticylinderLargeQuarter"
+  | "pillar"
+  | "post"
+  | "pole"
+  | "bevelledOuterCorner"
+  | "bevelledInnerCorner"
+  | "pillarBase"
+  | "doricCapital"
+  | "ionicCapital"
+  | "corinthianCapital"
+  | "doricTriglyph"
+  | "doricTriglyphCorner"
+  | "doricMetope"
+  | "architrave"
+  | "architraveCorner"
+  | "windowFrame"
+  | "windowCorner"
+  | "windowMullion"
+  | "sphereFull"
+  | "sphereHalf"
+  | "sphereQuarter"
+  | "sphereEighth"
+  | "sphereEighthLarge"
+  | "sphereEighthLargeRev"
+  | "roofOverhangGableLH"
+  | "roofOverhangGableRH"
+  | "roofOverhangGableEndLH"
+  | "roofOverhangGableEndRH"
+  | "roofOverhangRidge"
+  | "roofOverhangValley"
+  | "corniceLH"
+  | "corniceRH"
+  | "corniceEndLH"
+  | "corniceEndRH"
+  | "corniceRidge"
+  | "corniceValley"
+  | "corniceBottom"
+  | "archD1"
+  | "archD2"
+  | "archD3A"
+  | "archD3B"
+  | "archD3C"
+  | "archD4A"
+  | "archD4B"
+  | "archD4C"
+  | "banisterPlainBottom"
+  | "banisterPlain"
+  | "banisterPlainTop"
+  | "balustradeFancy"
+  | "balustradeFancyCorner"
+  | "balustradeFancyWithNewel"
+  | "balustradeFancyNewel"
+  | "balustradePlain"
+  | "balustradePlainOuterCorner"
+  | "balustradePlainWithNewel"
+  | "banisterPlainEnd"
+  | "banisterFancyNewelTall"
+  | "balustradePlainInnerCorner"
+  | "balustradePlainEnd"
+  | "banisterFancyBottom"
+  | "banisterFancy"
+  | "banisterFancyTop"
+  | "banisterFancyEnd"
+  | "banisterPlainInnerCorner"
+  | "slab"
+  | "stairs"
+  | "stairsOuterCorner"
+  | "stairsInnerCorner"
+  | "slopeTileA1"
+  | "slopeTileA2"
+  | "slopeTileB1"
+  | "slopeTileB2"
+  | "slopeTileB3"
+  | "slopeTileC1"
+  | "slopeTileC2"
+  | "slopeTileC3"
+  | "slopeTileC4"
+  | "slopeTileA1SE"
+  | "slopeTileA2SE"
+  | "slopeTileB1SE"
+  | "slopeTileB2SE"
+  | "slopeTileB3SE"
+  | "slopeTileC1SE"
+  | "slopeTileC2SE"
+  | "slopeTileC3SE"
+  | "slopeTileC4SE"
+  | "roofTileSE"
+  | "squareSE"
+  | "slabSE"
+  | "angledRoofRidge"
+  | "doubleRoofTile";
+
+export interface ArchShapeProps {
+  /** Which shape, e.g. "roofTile", "roofOuterCorner", "roofRidge", "stairs", "windowFrame", "archD2", "cylinder". */
+  shape: ShapeKey;
+  /** Material: a normal opaque block, glass or a slab, e.g. "minecraft:planks@1". The sawbench cuts shapes from it. */
+  block: BlockRef;
+  at: Vec3;
+  /** End of a run (inclusive); every block space in the box gets the same shape. */
+  to?: Vec3;
+  /**
+   * Two-sided shapes: the side the back is on (uphill for roof tiles, slopes,
+   * stairs and banisters; the wall for cornices and overhangs). Corner shapes:
+   * the corner between facing and the next direction clockwise (north = the
+   * north-east corner). Ridges and valleys: either side across the ridge line
+   * (a ridge running east-west takes "north" or "south"). Windows: the glass
+   * lies across facing. Round and four-way shapes ignore it. Default "north".
+   */
+  facing?: Facing;
+  /** Turn the shape over (hanging eaves, ceiling corners). Not windows. */
+  upsideDown?: boolean;
+  /** Window glass: a glass pane, e.g. "minecraft:glass_pane@0" or "minecraft:stained_glass_pane@15". Roofs and some models take cladding: any block. */
+  secondary?: BlockRef;
+  /** Banisters and balustrade ends: shift sideways, in blocks (the mod uses ±0.375). */
+  offsetX?: number;
+  /** Put the shape on the glowing block (Glow brush / sawbench glow page). */
+  glow?: boolean;
+  /** Connections cut with the chisel: bits 1 down, 2 up, 4 north, 8 south, 16 west, 32 east. */
+  disconnected?: number;
+  /** Raw tile entity orientation, overriding facing / upsideDown. */
+  side?: number;
+  turn?: number;
+}
+
+/**
+ * ArchitectureCraft shapes: roofs, slopes, cornices, columns, arches,
+ * windows, banisters and more, each cut at the sawbench from one material.
+ * Roof shapes join their neighbours like in game (ridges and valleys sit a
+ * level above the tiles they meet).
+ */
+export function ArchShape({ shape, block, at, to = at, facing, upsideDown, secondary, offsetX, glow, disconnected, side, turn }: ArchShapeProps) {
+  const p = usePlaceShape();
+  for (const q of range(at, to)) p.place(q, block, { shape, facing, upsideDown, secondary, offsetX, glow, disconnected, side, turn });
   return null;
 }
