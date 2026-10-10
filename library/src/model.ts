@@ -314,8 +314,11 @@ export class Grid {
     return [...counts.values()].sort((a, b) => b.count - a.count);
   }
 
-  /** Gzipped .schematic bytes (Schematica "Alpha" format). */
-  async toSchematic(): Promise<Uint8Array> {
+  /**
+   * Gzipped .schematic bytes (Schematica "Alpha" format). `worldedit` also
+   * makes it load in worldedit-gtnh (//schem load, //paste).
+   */
+  async toSchematic({ worldedit = false }: { worldedit?: boolean } = {}): Promise<Uint8Array> {
     const w = new SchematicWriter(this.size[0], this.size[1], this.size[2]);
     for (const [[x, y, z], c] of this.entries()) {
       if (c.shape) { w.setTile(x, y, z, { name: shapeBlockName(c.shape), meta: 0 }, shapeTileOf(c)); continue; }
@@ -323,7 +326,7 @@ export class Grid {
       w.set(x, y, z, { name, meta: c.meta });
     }
     for (const [[x, y, z], list] of this.partEntries()) w.setParts(x, y, z, list.map(savedPartOf));
-    const raw: Uint8Array = w.toNBT();
+    const raw: Uint8Array = w.toNBT({ worldedit });
     const stream = new Blob([raw as BlobPart]).stream().pipeThrough(new CompressionStream("gzip"));
     return new Uint8Array(await new Response(stream).arrayBuffer());
   }

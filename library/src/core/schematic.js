@@ -8,6 +8,14 @@
 // low byte; AddBlocks is written as all zeros, which both of Schematica's
 // read paths (standard nibble array and "schematicplus" full byte array)
 // accept.
+//
+// WorldEdit (worldedit-gtnh's SchematicReader) reads the same layout but takes
+// block names from BlockMapping instead of SchematicaMapping, and reads
+// AddBlocks as MCEdit nibbles (two blocks per byte). toNBT({ worldedit: true })
+// writes BlockMapping too and leaves AddBlocks out (every local id fits in
+// Blocks), so the file pastes with //schem load + //paste. TileEntities keep
+// schematic-relative x/y/z, which both read. No WEOrigin/WEOffset: //paste
+// puts the low north-west corner at your feet.
 import { encode, decode, byte, short, int, byteArray, list, TAG } from "./nbt.js";
 import { MULTIPART_BLOCK } from "./microblocks.js";
 
@@ -95,7 +103,8 @@ export class Structure {
 
   // Uncompressed NBT bytes. Gzip them before saving (Schematica falls back
   // to an uncompressed read, but gzip is what it writes and expects first).
-  toNBT() {
+  // worldedit: also readable by worldedit-gtnh (see the header).
+  toNBT({ worldedit = false } = {}) {
     const mapping = {};
     this.names.forEach((name, id) => { mapping[name] = short(id); });
     return encode("Schematic", {
@@ -105,8 +114,9 @@ export class Structure {
       Materials: "Alpha",
       Blocks: byteArray(this.ids),
       Data: byteArray(this.meta),
-      AddBlocks: byteArray(new Uint8Array(this.ids.length)),
+      ...(worldedit ? {} : { AddBlocks: byteArray(new Uint8Array(this.ids.length)) }),
       SchematicaMapping: mapping,
+      ...(worldedit ? { BlockMapping: mapping } : {}),
       Entities: list(TAG.Compound, []),
       TileEntities: list(TAG.Compound, [
         ...[...this.parts].map(([i, parts]) => ({
@@ -127,7 +137,7 @@ export class Structure {
     const { value: s } = decode(bytes);
     const st = new Structure(s.Width.value, s.Height.value, s.Length.value);
     const byFileId = new Map();
-    for (const [name, id] of Object.entries(s.SchematicaMapping ?? {})) byFileId.set(id.value, name);
+    for (const [name, id] of Object.entries(s.SchematicaMapping ?? s.BlockMapping ?? {})) byFileId.set(id.value, name);
     const blocks = s.Blocks.value, data = s.Data.value;
     const add = s.AddBlocks?.value;
     for (let i = 0; i < blocks.length; i++) {

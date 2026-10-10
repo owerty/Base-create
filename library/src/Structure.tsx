@@ -149,14 +149,17 @@ export function Structure({ name, size, viewHeight = 520, hideMaterials, showGri
   const mats = useMemo(() => grid?.materials() ?? [], [grid]);
   const file = name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") || "blueprint";
 
-  const exportSchematic = async () => {
+  const exportSchematic = async (worldedit: boolean) => {
     if (!grid) return;
-    const bytes = await grid.toSchematic();
+    const bytes = await grid.toSchematic({ worldedit });
+    const out = worldedit ? `${file}_worldedit.schematic` : `${file}.schematic`;
     try {
-      download(bytes, `${file}.schematic`);
-      setNote(`Saved ${file}.schematic — put it in .minecraft/schematics/`);
+      download(bytes, out);
+      setNote(worldedit
+        ? `Saved ${out} — put it in config/worldedit/schematics/, then //schem load ${file}_worldedit and //paste`
+        : `Saved ${out} — put it in .minecraft/schematics/`);
     } catch {
-      setNote("Download blocked here — use Copy blueprint and the converter page.");
+      setNote("Download blocked here — use Copy blueprint instead.");
     }
   };
   const copyBlueprint = async () => {
@@ -190,7 +193,8 @@ export function Structure({ name, size, viewHeight = 520, hideMaterials, showGri
           <input type="checkbox" checked={gridShown} onChange={e => setGridShown(e.target.checked)} />
           Grid
         </label>
-        <button style={css.btn} onClick={exportSchematic}>Export .schematic</button>
+        <button style={css.btn} onClick={() => exportSchematic(false)} title="For Schematica">Export .schematic</button>
+        <button style={css.btn2} onClick={() => exportSchematic(true)} title="For WorldEdit: //schem load, //paste (low north-west corner at your feet)">Export WorldEdit</button>
         <button style={css.btn2} onClick={copyBlueprint}>Copy blueprint</button>
         {note && <span style={css.dim}>{note}</span>}
       </div>

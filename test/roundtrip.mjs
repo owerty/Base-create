@@ -103,4 +103,21 @@ const check = (label, cond) => { console.log(`${cond ? "OK  " : "FAIL"} ${label}
   check("strips: bottom-south box hugs y=0 and z=1, full along x", x0 === 0 && x1 === 1 && y0 === 0 && y1 === 0.125 && z0 === 0.875 && z1 === 1);
 }
 
+// WorldEdit flavour: names under BlockMapping (worldedit-gtnh's SchematicReader), no per-block AddBlocks.
+{
+  const st = new Structure(3, 2, 2);
+  st.set(0, 0, 0, { name: "chisel:marble", meta: 3 });
+  st.set(2, 1, 1, "minecraft:stonebrick");
+  st.setParts(1, 0, 1, [part("edge", edgeSlot("bottom-north"), 1, "minecraft:stonebrick", 0)]);
+  const { value: we } = decode(st.toNBT({ worldedit: true }));
+  const { value: sc } = decode(st.toNBT());
+  check("worldedit: BlockMapping matches SchematicaMapping", JSON.stringify(we.BlockMapping) === JSON.stringify(we.SchematicaMapping)
+    && we.BlockMapping["chisel:marble"].value === sc.SchematicaMapping["chisel:marble"].value);
+  check("worldedit: no AddBlocks (ids fit in Blocks); Schematica file keeps its per-block AddBlocks", !("AddBlocks" in we) && sc.AddBlocks.value.length === 12);
+  check("worldedit: tile entities and blocks identical to the Schematica file",
+    JSON.stringify(we.TileEntities) === JSON.stringify(sc.TileEntities) && Buffer.compare(Buffer.from(we.Blocks.value), Buffer.from(sc.Blocks.value)) === 0);
+  const back = Structure.fromNBT(st.toNBT({ worldedit: true }));
+  check("worldedit: reads back", back.get(0, 0, 0).name === "chisel:marble" && back.get(0, 0, 0).meta === 3 && back.getParts(1, 0, 1).length === 1);
+}
+
 process.exit(fail ? 1 : 0);
