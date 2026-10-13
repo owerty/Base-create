@@ -64,8 +64,9 @@ npm run build
   ArchitectureCraft shapes. For shapes it picks the right shape item, clicks
   so the shape lands turned the right way, and fixes the rest with the hammer
   and chisel. It also adds window glass, and lists both in the material list.
-  It's client-side only: build it with `JAVA_HOME=<JDK 21> ./gradlew build`
-  and replace Schematica in your mods folder. Microblock printing is tested
+  It's client-side only: download the jar from its
+  [releases](https://github.com/philipxjm/Schematica/releases) and replace
+  Schematica in your mods folder. Microblock printing is tested
   in game; ArchitectureCraft printing is new and not yet tested in game.
 - **WorldEdit:** Export WorldEdit, put the file in the server's
   `config/worldedit/schematics/`, then run `//schem load <name>_worldedit`
@@ -76,8 +77,8 @@ npm run build
   pastes it like a copied region. That includes microblocks and
   ArchitectureCraft shapes with their offset, connections and window glass.
   It runs on the server and works with stock clients: they use
-  `/mmschematic`, and players with the fork also get a file picker. Build it
-  with `./gradlew build` (JDK 17+). Its ArchitectureCraft additions are not
+  `/mmschematic`, and players with the fork also get a file picker. The jar
+  is on its [releases](https://github.com/philipxjm/MatterManipulator/releases). Its ArchitectureCraft additions are not
   yet tested in game.
 
 ## Repo layout
