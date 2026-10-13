@@ -57,16 +57,28 @@ npm run build
 ## Getting it into the game
 
 - **Schematica:** Export .schematic, put the file in `.minecraft/schematics/`,
-  then load it with Schematica. GTNH ships Schematica, and it shows the whole
-  build as a hologram. Stock Schematica's printer places normal blocks only:
-  it skips microblocks, and ArchitectureCraft shapes need to be placed and
-  turned by hand.
+  then load it with Schematica (GTNH ships it). Stock Schematica shows the
+  whole build as a hologram, but its printer places normal blocks only.
+  [philipxjm/Schematica](https://github.com/philipxjm/Schematica/tree/microblock-printer)
+  (branch `microblock-printer`) also prints Forge Multipart microblocks and
+  ArchitectureCraft shapes. For shapes it picks the right shape item, clicks
+  so the shape lands turned the right way, and fixes the rest with the hammer
+  and chisel. It also adds window glass, and lists both in the material list.
+  It's client-side only: build it with `JAVA_HOME=<JDK 21> ./gradlew build`
+  and replace Schematica in your mods folder. Microblock printing is tested
+  in game; ArchitectureCraft printing is new and not yet tested in game.
 - **WorldEdit:** Export WorldEdit, put the file in the server's
   `config/worldedit/schematics/`, then run `//schem load <name>_worldedit`
   and `//paste`. The build's low north-west corner goes at your feet.
-- **Matter Manipulator:** a fork that imports `.schematic` files as the copy
-  source, working on a server with stock clients, is at
-  [philipxjm/MatterManipulator](https://github.com/philipxjm/MatterManipulator/tree/schematic-import).
+- **Matter Manipulator:**
+  [philipxjm/MatterManipulator](https://github.com/philipxjm/MatterManipulator/tree/schematic-import)
+  (branch `schematic-import`) imports a `.schematic` as the copy source, then
+  pastes it like a copied region. That includes microblocks and
+  ArchitectureCraft shapes with their offset, connections and window glass.
+  It runs on the server and works with stock clients: they use
+  `/mmschematic`, and players with the fork also get a file picker. Build it
+  with `./gradlew build` (JDK 17+). Its ArchitectureCraft additions are not
+  yet tested in game.
 
 ## Repo layout
 
