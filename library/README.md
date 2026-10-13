@@ -29,7 +29,7 @@ import { Structure, Fill, Hollow, Pillar, Stairs, Slab, Block, Door, Torch } fro
 
 | Component | Use |
 |---|---|
-| `<Structure name size viewHeight? hideMaterials? showGrid?>` | Root. 3D view, layer slider, Grid toggle, material list, **Export .schematic**. Every other component goes inside it. |
+| `<Structure name size viewHeight? hideMaterials? showGrid?>` | Root. 3D view, layer slider, Grid toggle, material list, **Export .schematic** (Schematica), **Export WorldEdit** (`//schem load` + `//paste`), **Copy blueprint**. Every other component goes inside it. |
 | `<Block block at>` | One block. |
 | `<Fill block from to>` | Solid box, corners inclusive. |
 | `<Hollow block from to noFloor? noCeiling?>` | Box shell: walls, plus floor and ceiling unless turned off. |
@@ -41,6 +41,7 @@ import { Structure, Fill, Hollow, Pillar, Stairs, Slab, Block, Door, Torch } fro
 | `<Torch at on?>` | Torch on the "floor" or on a wall ("north" = wall is north of the torch). |
 | `<Strip block at to? edge size?>` | Forge Multipart strips along one edge of each block space (see Microblocks). |
 | `<Corner block at to? corner size?>` | Forge Multipart corner pieces (nooks). |
+| `<ArchShape shape block at to? facing? upsideDown? secondary? offsetX?>` | ArchitectureCraft shapes (roofs, cornices, columns, arches, windows, banisters...); see `.design-sync/docs/ArchShape.md`. |
 | `<Palette tags? shape? query?>` | Searchable block picker (for people choosing blocks). |
 
 **Later components overwrite earlier ones.** Build big shapes first, then
